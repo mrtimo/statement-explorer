@@ -1,0 +1,457 @@
+source: sp500 is duckdb.table("data/filtered_data.csv") extend {
+    primary_key: CIK
+}
+
+source: fac is duckdb.table("data/COMID7.parquet") extend {
+join_one: sp500 with cik
+dimension: ticker is upper(stock_ticker)
+
+// Return on Assets
+  ROA is net_income_loss_2 / assets_3
+
+  // Return on Equity
+  ROE is net_income_loss_2 / equity_3
+
+  // Return on Sales (Net Profit Margin)
+  ROS is net_income_loss_2 / revenues_1
+
+  // Sustainable Growth Rate
+  SGR is
+    ((net_income_loss_2 / revenues_1) * (1 + ((assets_3 - equity_3) / equity_3)))
+    /
+    ((1 / (revenues_1 / assets_3)) - ((net_income_loss_2 / revenues_1) * (1 + ((assets_3 - equity_3) / equity_3))))
+measure: 
+ROA_m is avg(ROA)
+ROE_m is avg(ROE)
+ROS_m is avg(ROS)
+SGR_m is avg(SGR)
+
+
+# bar_chart
+view: assets_over_time is {
+    group_by: ticker, period.quarter--, fp--, assets_3--, name_no_comma --, fp --, fy --   fy1 is (fy::string)::date
+    aggregate: assets is max(assets_3)
+    where: ticker = "AAPL"
+    limit: 2000
+}
+
+
+view: by_ind is {
+    group_by: sp500.`GICS Sub-Industry`
+    aggregate: num_industries is count(sp500.CIK)
+
+}
+
+view: by_co is {
+    group_by: sp500.Security
+    --aggregate: num_industries is count(sp500.CIK)
+
+}
+
+
+
+
+
+# bar_chart {y.independent}
+view: assets_by_time is {
+    group_by: filed.quarter
+    aggregate: assets is max(assets_3)
+    limit: 40
+}
+
+
+view: by_time is {
+    --group_by: filed.quarter
+    group_by: ddate.quarter, ROE, ROA, ROS, SGR
+    --where: ticker = "AAPL"
+    limit: 40
+}
+
+
+view: test1 is {
+    group_by: name_no_comma, stock_ticker
+    nest: assets_by_time
+}
+
+// View 1: Income Statement
+view: income_statement is {
+  aggregate:
+    cost_of_revenues_1_ is max(cost_of_revenues_1)
+    extraordinary_items_gain_net_of_tax_1_ is max(extraordinary_items_gain_net_of_tax_1)
+    gross_profit_1_ is max(gross_profit_1)
+    income_loss_from_continuing_oper_before_tax_1_ is max(income_loss_from_continuing_oper_before_tax_1)
+    income_loss_from_continuing_ops_after_tax_1_ is max(income_loss_from_continuing_ops_after_tax_1)
+    income_loss_from_discontinued_ops_after_tax_1_ is max(income_loss_from_discontinued_ops_after_tax_1)
+    income_tax_expense_1_ is max(income_tax_expense_1)
+    net_income_loss_attr_non_controling_interest_1_ is max(net_income_loss_attr_non_controling_interest_1)
+    net_income_loss_attr_parent_1_ is max(net_income_loss_attr_parent_1)
+    net_income_loss_available_to_common_stockholders_basic_1_ is max(net_income_loss_available_to_common_stockholders_basic_1)
+    nonoperating_income_loss_1_ is max(nonoperating_income_loss_1)
+    operating_expenses_1_ is max(operating_expenses_1)
+    operating_income_loss_1_ is max(operating_income_loss_1)
+    other_operating_income_1_ is max(other_operating_income_1)
+    preferred_stock_dividends_other_1_ is max(preferred_stock_dividends_other_1)
+    revenues_1_ is max(revenues_1)
+}
+
+// View 2: Statement of Comprehensive Income
+view: statement_of_comprehensive_income is {
+  aggregate:
+    comp_income_attr_parent_2_ is max(comp_income_attr_parent_2)
+    comp_income_loss_2_ is max(comp_income_loss_2)
+    comp_income_loss_attributable_to_noncontrolling_interest_2_ is max(comp_income_loss_attributable_to_noncontrolling_interest_2)
+    net_income_loss_2_ is max(net_income_loss_2)
+    other_comprehensive_income_2_ is max(other_comprehensive_income_2)
+}
+
+// View 3: Balance Sheet
+view: balance_sheet is {
+  aggregate:
+    assets_3_ is max(assets_3)
+    commitments_and_contingencies_3_ is max(commitments_and_contingencies_3)
+    current_assets_3_ is max(current_assets_3)
+    current_liabilities_3_ is max(current_liabilities_3)
+    equity_3_ is max(equity_3)
+    equity_attributable_to_non_controlling_interest_3_ is max(equity_attributable_to_non_controlling_interest_3)
+    equity_attributable_to_parent_3_ is max(equity_attributable_to_parent_3)
+    liabilities_3_ is max(liabilities_3)
+    liabilities_and_equity_3_ is max(liabilities_and_equity_3)
+    noncurrent_assets_3_ is max(noncurrent_assets_3)
+    noncurrent_liabilities_3_ is max(noncurrent_liabilities_3)
+    temporary_equity_3_ is max(temporary_equity_3)
+}
+
+// View 4: Cash Flow Statement
+view: cash_flow_statement is {
+    group_by: ddate.month
+    where: cik = '320193' --and ddate.month != 0 
+  aggregate:
+    exchange_gains_losses_4_ is max(exchange_gains_losses_4)
+    net_cash_flow_4_ is max(net_cash_flow_4)
+    net_cash_flows_continuing_4_ is max(net_cash_flows_continuing_4)
+    net_cash_flows_discontinued_4_ is max(net_cash_flows_discontinued_4)
+    net_cash_flows_financing_4_ is max(net_cash_flows_financing_4)
+    net_cash_flows_financing_continuing_4_ is max(net_cash_flows_financing_continuing_4)
+    net_cash_flows_financing_discontinued_4_ is max(net_cash_flows_financing_discontinued_4)
+    net_cash_flows_investing_4_ is max(net_cash_flows_investing_4)
+    net_cash_flows_investing_continuing_4_ is max(net_cash_flows_investing_continuing_4)
+    net_cash_flows_investing_discontinued_4_ is max(net_cash_flows_investing_discontinued_4)
+    net_cash_flows_operating_4_ is max(net_cash_flows_operating_4)
+    net_cash_flows_operating_continuing_4_ is max(net_cash_flows_operating_continuing_4)
+    net_cash_flows_operating_discontinued_4_ is max(net_cash_flows_operating_discontinued_4)
+    limit: 1000
+}
+
+}
+
+source: unpivoted is duckdb.table("data/unpivoted.parquet") extend {
+join_one: sp500 with cik
+rename: accounting_concept is col_name
+value is col_value
+dimension: ticker is upper(stock_ticker)
+// Return on Assets
+measure: ROA is
+  max(value) {where: accounting_concept = 'net_income_loss_2'}
+  / max(value) {where: accounting_concept = 'assets_3'}
+
+// Return on Equity
+ ROE is
+  max(value) {where: accounting_concept = 'net_income_loss_2'}
+  / max(value) {where: accounting_concept = 'equity_3'}
+
+// Return on Sales (Net Profit Margin)
+ ROS is
+  max(value) {where: accounting_concept = 'net_income_loss_2'}
+  / max(value) {where: accounting_concept = 'revenues_1'}
+
+// Sustainable Growth Rate
+ SGR is
+  ((max(value) {where: accounting_concept = 'net_income_loss_2'} / max(value) {where: accounting_concept = 'revenues_1'})
+    * (1 + ((max(value) {where: accounting_concept = 'assets_3'} - max(value) {where: accounting_concept = 'equity_3'}) / max(value) {where: accounting_concept = 'equity_3'})))
+  /
+  ((1 / (max(value) {where: accounting_concept = 'revenues_1'} / max(value) {where: accounting_concept = 'assets_3'}))
+    - ((max(value) {where: accounting_concept = 'net_income_loss_2'} / max(value) {where: accounting_concept = 'revenues_1'})
+      * (1 + ((max(value) {where: accounting_concept = 'assets_3'} - max(value) {where: accounting_concept = 'equity_3'}) / max(value) {where: accounting_concept = 'equity_3'}))))
+
+measure: debt_to_equity is
+    max(value) {where: accounting_concept = 'liabilities_3'}
+    / max(value) {where: accounting_concept = 'equity_3'}
+
+measure: current_ratio is
+    max(value) {where: accounting_concept = 'current_assets_3'}
+    / max(value) {where: accounting_concept = 'current_liabilities_3'}
+
+measure: asset_turnover is
+    max(value) {where: accounting_concept = 'revenues_1'}
+    / max(value) {where: accounting_concept = 'assets_3'}
+
+// ROE = Net Margin × Asset Turnover × Equity Multiplier
+measure: net_margin is ROS
+measure: equity_multiplier is
+    max(value) {where: accounting_concept = 'assets_3'}
+    / max(value) {where: accounting_concept = 'equity_3'}
+
+view: dupont_analysis is {
+    group_by: name_no_comma, ticker, sp500.`GICS Sector`
+    aggregate: ROE, net_margin, asset_turnover, equity_multiplier
+}
+
+
+
+view: financial_health is {
+    group_by: name_no_comma, ticker
+    aggregate: debt_to_equity, current_ratio, asset_turnover, ROA, ROE
+}
+
+view: by_submission is {
+    group_by: adsh
+    aggregate: count_of is count()
+        nest: by_tag is {
+            group_by: accounting_concept, value, fp, fy, ddate
+            aggregate: count_of is count()
+        }
+}
+
+view: by_sp500_industry is {
+    group_by: sp500.`GICS Sub-Industry`
+    aggregate: num_industries is count(sp500.CIK)
+
+}
+
+view: by_sp500_company is {
+    group_by: sp500.Security
+    --aggregate: num_industries is count(sp500.CIK)
+
+}
+
+view: by_company is {
+    group_by: name_no_comma, ticker
+    aggregate: num_qtrs is count(ddate)
+    limit: 30
+
+}
+
+view: by_accounting_concept is {
+    group_by: accounting_concept
+    aggregate: count_of is count()
+    limit:100
+}
+
+
+# bar_chart {y.independent size=spark}
+view: by_quarter_spark is {
+    group_by: ddate.quarter
+    aggregate: amt is max(value)
+    --where: stock_ticker = 'aapl'
+    limit: 100
+}
+
+# bar_chart {y.independent size=spark}
+view: by_10k_spark is {
+    group_by: ddate.quarter
+    aggregate: amt is max(value)
+    --where: stock_ticker = 'aapl'
+    limit: 100
+    where: form = "10-K"
+}
+
+view: by_income_statement_items is {
+    group_by: accounting_concept
+    aggregate: count_of is count()
+    where: accounting_concept = 'cost_of_revenues_1'
+      | 'extraordinary_items_gain_net_of_tax_1'
+      | 'gross_profit_1'
+      | 'income_loss_from_continuing_oper_before_tax_1'
+      | 'income_loss_from_continuing_ops_after_tax_1'
+      | 'income_loss_from_discontinued_ops_after_tax_1'
+      | 'income_tax_expense_1'
+      | 'net_income_loss_attr_non_controling_interest_1'
+      | 'net_income_loss_attr_parent_1'
+      | 'net_income_loss_available_to_common_stockholders_basic_1'
+      | 'nonoperating_income_loss_1'
+      | 'operating_expenses_1'
+      | 'operating_income_loss_1'
+      | 'other_operating_income_1'
+      | 'preferred_stock_dividends_other_1'
+      | 'revenues_1'
+    limit: 100
+}
+
+view: by_comprehensive_income_items is {
+    group_by: accounting_concept
+    aggregate: count_of is count()
+    where: accounting_concept = 'comp_income_attr_parent_2'
+      | 'comp_income_loss_2'
+      | 'comp_income_loss_attributable_to_noncontrolling_interest_2'
+      | 'net_income_loss_2'
+      | 'other_comprehensive_income_2'
+    limit: 100
+}
+
+
+// View 1: Income Statement (unpivoted)
+view: income_statement is {
+  group_by: ddate.quarter
+  aggregate:
+    cost_of_revenues_1_ is max(value) {where: accounting_concept = 'cost_of_revenues_1'}
+    extraordinary_items_gain_net_of_tax_1_ is max(value) {where: accounting_concept = 'extraordinary_items_gain_net_of_tax_1'}
+    gross_profit_1_ is max(value) {where: accounting_concept = 'gross_profit_1'}
+    income_loss_from_continuing_oper_before_tax_1_ is max(value) {where: accounting_concept = 'income_loss_from_continuing_oper_before_tax_1'}
+    income_loss_from_continuing_ops_after_tax_1_ is max(value) {where: accounting_concept = 'income_loss_from_continuing_ops_after_tax_1'}
+    income_loss_from_discontinued_ops_after_tax_1_ is max(value) {where: accounting_concept = 'income_loss_from_discontinued_ops_after_tax_1'}
+    income_tax_expense_1_ is max(value) {where: accounting_concept = 'income_tax_expense_1'}
+    net_income_loss_attr_non_controling_interest_1_ is max(value) {where: accounting_concept = 'net_income_loss_attr_non_controling_interest_1'}
+    net_income_loss_attr_parent_1_ is max(value) {where: accounting_concept = 'net_income_loss_attr_parent_1'}
+    net_income_loss_available_to_common_stockholders_basic_1_ is max(value) {where: accounting_concept = 'net_income_loss_available_to_common_stockholders_basic_1'}
+    nonoperating_income_loss_1_ is max(value) {where: accounting_concept = 'nonoperating_income_loss_1'}
+    operating_expenses_1_ is max(value) {where: accounting_concept = 'operating_expenses_1'}
+    operating_income_loss_1_ is max(value) {where: accounting_concept = 'operating_income_loss_1'}
+    other_operating_income_1_ is max(value) {where: accounting_concept = 'other_operating_income_1'}
+    preferred_stock_dividends_other_1_ is max(value) {where: accounting_concept = 'preferred_stock_dividends_other_1'}
+    revenues_1_ is max(value) {where: accounting_concept = 'revenues_1'}
+}
+
+// View 2: Statement of Comprehensive Income (unpivoted)
+view: statement_of_comprehensive_income is {
+  group_by: ddate.quarter
+  aggregate:
+    comp_income_attr_parent_2_ is max(value) {where: accounting_concept = 'comp_income_attr_parent_2'}
+    comp_income_loss_2_ is max(value) {where: accounting_concept = 'comp_income_loss_2'}
+    comp_income_loss_attributable_to_noncontrolling_interest_2_ is max(value) {where: accounting_concept = 'comp_income_loss_attributable_to_noncontrolling_interest_2'}
+    net_income_loss_2_ is max(value) {where: accounting_concept = 'net_income_loss_2'}
+    other_comprehensive_income_2_ is max(value) {where: accounting_concept = 'other_comprehensive_income_2'}
+}
+
+// View 3: Balance Sheet (unpivoted)
+view: balance_sheet is {
+  group_by: ddate.quarter
+  aggregate:
+    assets_3_ is max(value) {where: accounting_concept = 'assets_3'}
+    commitments_and_contingencies_3_ is max(value) {where: accounting_concept = 'commitments_and_contingencies_3'}
+    current_assets_3_ is max(value) {where: accounting_concept = 'current_assets_3'}
+    current_liabilities_3_ is max(value) {where: accounting_concept = 'current_liabilities_3'}
+    equity_3_ is max(value) {where: accounting_concept = 'equity_3'}
+    equity_attributable_to_non_controlling_interest_3_ is max(value) {where: accounting_concept = 'equity_attributable_to_non_controlling_interest_3'}
+    equity_attributable_to_parent_3_ is max(value) {where: accounting_concept = 'equity_attributable_to_parent_3'}
+    liabilities_3_ is max(value) {where: accounting_concept = 'liabilities_3'}
+    liabilities_and_equity_3_ is max(value) {where: accounting_concept = 'liabilities_and_equity_3'}
+    noncurrent_assets_3_ is max(value) {where: accounting_concept = 'noncurrent_assets_3'}
+    noncurrent_liabilities_3_ is max(value) {where: accounting_concept = 'noncurrent_liabilities_3'}
+    temporary_equity_3_ is max(value) {where: accounting_concept = 'temporary_equity_3'}
+}
+
+view: by_balance_sheet_items is {
+    group_by: accounting_concept
+    aggregate: count_of is count()
+    where: accounting_concept = 'assets_3'
+      | 'commitments_and_contingencies_3'
+      | 'current_assets_3'
+      | 'current_liabilities_3'
+      | 'equity_3'
+      | 'equity_attributable_to_non_controlling_interest_3'
+      | 'equity_attributable_to_parent_3'
+      | 'liabilities_3'
+      | 'liabilities_and_equity_3'
+      | 'noncurrent_assets_3'
+      | 'noncurrent_liabilities_3'
+      | 'temporary_equity_3'
+    limit: 100
+}
+
+// View 4: Cash Flow Statement (unpivoted)
+view: cash_flow_statement is {
+    group_by: ddate.quarter
+   -- where: cik = '320193'
+  aggregate:
+    exchange_gains_losses_4_ is max(value) {where: accounting_concept = 'exchange_gains_losses_4'}
+    net_cash_flow_4_ is max(value) {where: accounting_concept = 'net_cash_flow_4'}
+    net_cash_flows_continuing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_continuing_4'}
+    net_cash_flows_discontinued_4_ is max(value) {where: accounting_concept = 'net_cash_flows_discontinued_4'}
+    net_cash_flows_financing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_financing_4'}
+    net_cash_flows_financing_continuing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_financing_continuing_4'}
+    net_cash_flows_financing_discontinued_4_ is max(value) {where: accounting_concept = 'net_cash_flows_financing_discontinued_4'}
+    net_cash_flows_investing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_investing_4'}
+    net_cash_flows_investing_continuing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_investing_continuing_4'}
+    net_cash_flows_investing_discontinued_4_ is max(value) {where: accounting_concept = 'net_cash_flows_investing_discontinued_4'}
+    net_cash_flows_operating_4_ is max(value) {where: accounting_concept = 'net_cash_flows_operating_4'}
+    net_cash_flows_operating_continuing_4_ is max(value) {where: accounting_concept = 'net_cash_flows_operating_continuing_4'}
+    net_cash_flows_operating_discontinued_4_ is max(value) {where: accounting_concept = 'net_cash_flows_operating_discontinued_4'}
+    limit: 1000
+}
+
+view: by_cash_flow_stmt_items is {
+    group_by: accounting_concept
+    aggregate: count_of is count()
+    where: accounting_concept = 'exchange_gains_losses_4'
+      | 'net_cash_flow_4'
+      | 'net_cash_flows_continuing_4'
+      | 'net_cash_flows_discontinued_4'
+      | 'net_cash_flows_financing_4'
+      | 'net_cash_flows_financing_continuing_4'
+      | 'net_cash_flows_financing_discontinued_4'
+      | 'net_cash_flows_investing_4'
+      | 'net_cash_flows_investing_continuing_4'
+      | 'net_cash_flows_investing_discontinued_4'
+      | 'net_cash_flows_operating_4'
+      | 'net_cash_flows_operating_continuing_4'
+      | 'net_cash_flows_operating_discontinued_4'
+    limit: 100
+}
+
+// Compare key metrics across S&P 500 companies
+view: company_scorecard is {
+    group_by: name_no_comma, ticker, sp500.`GICS Sector`
+    aggregate: ROA, ROE, ROS, SGR
+    limit: 50
+}
+
+// Industry-level averages for benchmarking
+view: industry_benchmarks is {
+    group_by: sp500.`GICS Sector`
+    aggregate: ROA, ROE, ROS, SGR
+}
+
+view: sub_industry_benchmarks is {
+    group_by: sp500.`GICS Sub-Industry`
+    aggregate: ROA, ROE, ROS, SGR
+}
+
+// Ratios over time for a single company
+view: ratios_over_time is {
+    group_by: ddate.quarter, ticker
+    aggregate: ROA, ROE, ROS, SGR
+    
+    limit: 200
+}
+
+// Sparkline-friendly ratio trends
+# bar_chart {y.independent size=spark}
+view: ROE_spark is {
+    group_by: ddate.quarter
+    aggregate: ROE
+   -- where: cik = '320193'
+    limit: 40
+}
+
+view: company_dashboard is {
+    group_by: name_no_comma, ticker
+    nest: ratios_over_time + {limit: 10}
+    nest: income_statement + {limit: 10}
+    nest: balance_sheet + {limit: 10}
+    limit: 10
+}
+
+view: sector_overview is {
+    group_by: sp500.`GICS Sector`--, ddate.quarter
+    aggregate: ROA, ROE, ROS
+    nest: company_scorecard is {
+        group_by: name_no_comma, ticker
+        aggregate: ROA, ROE, ROS, SGR
+        limit: 10
+    }
+}
+
+}
+
+
+run: unpivoted -> by_company + { nest: by_accounting_concept + { nest: by_quarter_spark } }
