@@ -13,7 +13,7 @@ We are working with a dataset of ICE/ERO arrest records stored as a parquet file
 Open your `.malloy` file. You should have this as your base source code:
 
 ```malloy
-source: arrests is duckdb.table('data/arrests-latest.parquet') extend {
+source: arrests is duckdb.table('data/arrests-latest.csv') extend {
 
 
 }
